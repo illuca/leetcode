@@ -1,0 +1,1294 @@
+* tree
+** bst
+*** 108 convert sorted array to bst *easy*
+#+NAME: mine,recursive
+#+begin_src python
+"""
+每次都从中间划分,就能保证平衡
+返回一定要放在最后,先执行函数,再返回
+若想建立1层和2层的联系,用1层.child=2层.return
+"""
+class Solution:
+    def sortedArrayToBST(self, nums: List[int]) -> TreeNode:
+        if nums:
+            r = len(nums) // 2
+            root = TreeNode(nums[r])
+            root.left = self.sortedArrayToBST(nums[:r])
+            root.right = self.sortedArrayToBST(nums[r + 1:])
+            return root
+#+end_src
+
+#+NAME: mine,nonlocal nums
+#+begin_src python
+"""
+被困在start+(end-start)/2里好多时间
+一直忘了+start
+"""
+class Solution:
+    def sortedArrayToBST(self, nums: List[int]) -> TreeNode:
+        def helper(start,end):
+            nonlocal nums
+            if end>=start:
+                r=start+(end-start)//2
+                root = TreeNode(nums[r])
+                root.left = helper(start,r-1)
+                root.right = helper(r+1,end)
+                return root
+        return helper(0,len(nums)-1)
+#+end_src
+*** 530 minimum absolute difference in bst
+#+NAME: abs(cur-last), inorder
+#+begin_src python
+
+class Solution:
+    def getMinimumDifference(self, root: TreeNode) -> int:
+        # @snoop()
+        def inOrder(root):
+            nonlocal minn,last
+            if not root:
+                return math.inf
+            inOrder(root.left)
+            minn=min(minn,abs(root.val-last))
+            # print(root.val,last)
+            last=root.val
+            inOrder(root.right)
+
+        import math
+        last=math.inf
+        minn = math.inf
+        inOrder(root)
+        return minn
+#+end_src
+
+#+NAME: inorder
+#+begin_src python
+class Solution:
+"""
+- 巧妙的运用了class Solution的属性!
+- sicp中的迭代!
+- 注意到inorder是升序,不用abs
+"""
+    last, minn = float("-inf"), float("inf")
+	
+    def getMinimumDifference(self, r: TreeNode) -> int:
+        if not r: 
+            return r
+        self.getMinimumDifference(r.left)
+        self.minn, self.last = min(self.minn, r.val-self.last), r.val
+        self.getMinimumDifference(r.right)
+        return self.minn
+#+end_src
+
+#+NAME: sicp
+#+begin_src python
+"""
+- 精妙的迭代,形参的迭代不如self属性直观"""
+class Solution:
+    def getMinimumDifference(self, root: TreeNode) -> int:
+        def fn(cur, lo, hi):
+            if not cur:
+                return hi-lo
+            l = fn(cur.left, lo, cur.val)
+            r = fn(cur.right, cur.val, hi)
+            return min(l, r)
+
+        return fn(root, float('-inf'), float('inf'))
+#+end_src
+*** 538 convert bst to greater tree *easy*
+#+NAME: mine,iterative inorder
+#+begin_src python
+class Solution:
+    def convertBST(self, root: TreeNode) -> TreeNode:
+        cur=root
+        stack=[]
+        last=0
+        
+        while cur is not None or stack != []:
+            while cur is not None:
+                stack.append(cur)
+                cur = cur.right
+            # cur must be None at this point
+            cur = stack.pop()
+            cur.val+=last
+            last=cur.val
+            cur = cur.left
+        return root
+#+end_src
+*** 653 two sum IV
+#+NAME: 中序遍历,然后二分查找
+#+begin_src python
+class Solution:
+    def findTarget(self, root: TreeNode, k: int) -> bool:
+        def inOrder(rt):
+            if rt:
+                inOrder(rt.left)
+                self.In.append(rt.val)
+                inOrder(rt.right)
+
+        def find(rt, x):
+            if rt:
+                if rt.val < x:
+                    return find(rt.right, x)
+                elif rt.val > x:
+                    return find(rt.left, x)
+                else:
+                    return True
+            return False
+
+        self.In = []
+        inOrder(root)
+        for i, n in enumerate(self.In):
+            d = k-n
+
+            if d == n:
+                try:
+                    if self.In[i+1] == d:
+                        return True
+                    else:
+                        return False
+                except:
+                    return False
+            if self.In[0] <= d <= self.In[-1] and find(root, d):
+                return True
+
+        return False
+#+end_src
+
+#+NAME: 中序遍历,然后查找
+#+begin_src python
+class Solution:
+    def findTarget(self, root: TreeNode, k: int) -> bool:
+        def inOrder(rt):
+            if rt:
+                inOrder(rt.left)
+                self.In.append(rt.val)
+                inOrder(rt.right)
+        self.In = []
+        inOrder(root)
+        for i, val in enumerate(self.In):
+            d=k-val
+            if d==val:
+                if self.In.count(d)==2:
+                    return True
+                return False
+            elif self.In.count(d)==1:
+                return True
+        return False
+#+end_src
+
+#+NAME: defaultdict
+#+begin_src python
+"""
+if In[d]==2会增加key,而在iteration中,defaultdict的长度不能变化,所以需要list(In.keys())
+这样 i<In.length就变成了i<list.lenght,终止条件明确
+"""
+class Solution:
+    def findTarget(self, root: TreeNode, k: int) -> bool:
+        def inOrder(rt):
+            nonlocal In
+            if rt:
+                inOrder(rt.left)
+                In[rt.val]+=1
+                inOrder(rt.right)
+        import collections
+        
+        In = collections.defaultdict(int)
+        inOrder(root)
+        
+        for key in list(In.keys()):
+            d=k-key
+            if d==key:
+                if In[d]==2:
+                    return True
+                return False
+            elif In[d]==1:
+                return True
+        return False
+#+end_src
+
+#+NAME: bfs
+#+begin_src python
+"""
+此方法的核心是层序遍历
+queue一层一层
+seen处于queue的上面一层
+这样cur包含所以访问过的节点
+if k-cur.val的值在seen中,就True
+而如果k-cur.val在unseen中, 我们一会就回去访问
+
+即seen把整个树分成了已访问过的层,和未访问过的层
+"""
+class Solution(object):
+	def findTarget(self, root, k):
+		"""
+		:type root: TreeNode
+		:type k: int
+		:rtype: bool
+		"""
+		# queue has to be type of list because order is important
+		# seen is set because order doesn't matter and it's faster
+		queue, seen = [root], set()     
+
+		while queue:        # as long as there's any node in a queue
+			curr = queue.pop()      # pop removes and returns last value from the queu
+			if k - curr.val in seen:        # k-curr.val in seen means there are two wanted numbers
+				return True
+			seen.add(curr.val)      # add current number to seen (add because seeen is typo of set)
+
+			# Preorder tree traversal (root, left, right)
+			if curr.left:
+				queue.append(curr.left)
+			if curr.right:
+				queue.append(curr.right)
+
+		return False        # if all nodes have been visited without success return False
+#+end_src
+
+#+NAME: bfs
+#+begin_src python
+class Solution(object):
+    def findTarget(self, root, k):
+        """
+        :type root: TreeNode
+        :type k: int
+        :rtype: bool
+        """
+        if not root:
+            return False
+
+        return self._findTarget(root, set(), k)
+    
+    def _findTarget(self, node, nodes, k):
+        if not node:
+            return False
+
+        complement = k - node.val
+        if complement in nodes:
+            return True
+
+        nodes.add(node.val) # current
+
+        return self._findTarget(node.left, nodes, k) or self._findTarget(node.right, nodes, k) # level
+#+end_src
+*** 669 trim a bst tree
+每道题都要注意是什么树!
+不同的树有不同的性质!是解题的关键!
+#+NAME: mine,recursive
+#+begin_src python
+class Solution:
+    def trimBST(self, root: TreeNode, L: int, R: int) -> TreeNode:
+        def dfs(root):
+            if root:
+                if root.val < L:
+                    return dfs(root.right)
+                elif root.val > R:
+                    return dfs(root.left)
+                else:
+                    root.left = dfs(root.left)
+                    root.right = dfs(root.right)
+                    return root
+            return None
+        return dfs(root)
+#+end_src
+*** 700 search in a binary search tree *easy*
+给定一个值,如何此值在bst中, 就返回此值所在的节点树
+否则,返回None
+
+#+NAME: mine
+#+begin_src python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, x):
+#         self.val = x
+#         self.left = None
+#         self.right = None
+
+class Solution:
+    def searchBST(self, root: TreeNode, val: int) -> TreeNode:
+        if not root:
+            return None
+
+        if val>root.val:
+            return self.searchBST(root.right,val)
+        elif val<root.val:
+            return self.searchBST(root.left,val)
+        else:
+            return root
+#+end_src
+****
+*** 897 increasing order search tree *easy*
+#+NAME: mine
+#+begin_src python
+class Solution:
+    def increasingBST(self, root: TreeNode) -> TreeNode:
+        def inorder(root):
+            nonlocal order
+            if not root:
+                return
+            inorder(root.left)
+            order.append(root)
+            inorder(root.right)
+        import collections
+        order=collections.deque()
+        inorder(root)
+        for i in range(len(order)-1):
+            order[i].left=order[i+1].left=None
+            order[i].right=order[i+1]
+        return order[0]
+#+end_src
+
+#+NAME: s1
+
+#+begin_src plantuml :file ~/document/plantuml-images/897-s1.png
+digraph foo {
+
+}
+#+end_src
+
+#+begin_src python
+# Definition for a binary tree node.
+class TreeNode:
+    def __init__(self, x):
+        self.val = x
+        self.left = None
+        self.right = None
+
+
+class Solution:
+    def increasingBST(self, root: TreeNode) -> TreeNode:
+        def inorder(node):
+            nonlocal cur  # 用self.cur就可以不写nonlocal了
+            if node:
+                inorder(node.left)
+                node.left = None
+                cur.right = node
+                cur = node
+                inorder(node.right)
+
+        ans = cur = TreeNode(None)
+        inorder(root)
+        return ans.right
+
+
+def dfs(root):
+    if not root:
+        return
+    print(root.val)
+    dfs(root.left)
+    dfs(root.right)
+
+
+t = TreeNode(5)
+t.left = TreeNode(3)
+t.left.left = TreeNode(2)
+t.left.right = TreeNode(4)
+t.left.left.left = TreeNode(1)
+
+t.right = TreeNode(6)
+t.right.right = TreeNode(8)
+t.right.right.left = TreeNode(7)
+t.right.right.right = TreeNode(9)
+
+t1 = Solution().increasingBST(t)
+dfs(t1)
+
+#+end_src
+*** 938 range sum of bst *easy*
+**** s1
+#+begin_src python
+class Solution:
+    def rangeSumBST(self, root: TreeNode, L: int, R: int) -> int:
+        if not root:
+            return 0
+        sum = 0
+        if L <= root.val <= R:
+            sum = root.val
+        if root.val <= L:
+            # Case when left subtree has values < L so need to traverse it
+            sum += self.rangeSumBST(root.right, L, R)
+        elif root.val >= R:
+            # Case when right subtree has values > R so need to traverse it
+            sum += self.rangeSumBST(root.left, L, R)
+        else:
+            # Case when both subtrees shall be traversed
+            sum += self.rangeSumBST(root.left, L, R) + self.rangeSumBST(root.right, L, R)
+
+        return sum
+#+end_src
+** traverse
+*** 100 same tree *easy*
+#+NAME: dfs
+#+begin_src python
+class Solution:
+    def isSameTree(self, p: TreeNode, q: TreeNode) -> bool:
+        def dfs(t1,t2):
+            nonlocal flag
+            if not t1:
+                if t2:
+                    flag=False
+                return 
+            
+            if t2 and t2.val==t1.val:
+                dfs(t1.left,t2.left)
+                dfs(t1.right,t2.right)
+            else:
+                flag=False
+                return
+        flag=True     
+        dfs(p,q)
+        return flag
+#+end_src
+#+NAME: dfs 简
+#+begin_src python
+def isSameTree(self, p, q):
+    if p is not None and q is not None:
+        # the way to True is single-plank bridge
+        return p.val == q.val and self.isSameTree(p.left, q.left) and self.isSameTree(p.right, q.right)
+    return p is q # None is None -> True, otherwise -> False
+#+end_src
+#+NAME: dfs 改
+#+begin_src python
+class Solution(object):
+    def isSameTree(self, p, q):
+        if p is None and q is None: # p,q all equals to None
+            return True
+        elif p is None or q is None: # p,q differs from each other
+            return False
+        if p.val==q.val: # p,q are not None
+            return self.isSameTree(p.left, q.left) and self.isSameTree(p.right, q.right)
+        else:
+            return False
+#+end_src
+
+#+NAME: bfs,dfs iterative
+#+begin_src python
+# DFS with stack        
+def isSameTree2(self, p, q):
+    stack = [(p, q)]
+    while stack:
+        node1, node2 = stack.pop()
+        if not node1 and not node2:
+            continue
+        elif None in [node1, node2]:
+            return False
+        else:
+            if node1.val != node2.val:
+                return False
+            stack.append((node1.right, node2.right))
+            stack.append((node1.left, node2.left))
+    return True
+ 
+# BFS with queue    
+def isSameTree3(self, p, q):
+    queue = [(p, q)]
+    while queue:
+        node1, node2 = queue.pop(0)
+        if not node1 and not node2:
+            continue
+        elif None in [node1, node2]:
+            return False
+        else:
+            if node1.val != node2.val:
+                return False
+            queue.append((node1.left, node2.left))
+            queue.append((node1.right, node2.right))
+    return True
+#+end_src
+
+#+NAME: tuple
+#+begin_src python
+def isSameTree(self, p, q):
+    def t(n):
+        return n and (n.val, t(n.left), t(n.right))
+    return t(p) == t(q)
+#+end_src
+
+
+#+NAME: one line
+#+begin_src python
+def isSameTree(self, p, q):
+    return p and q and p.val == q.val and all(map(self.isSameTree, (p.left, p.right), (q.left, q.right))) or p is q
+# p is q:  It is just to return True if p==None and q==None else False.
+#+end_src
+*** 101 symetric tree 
+#+NAME: mine
+#+begin_src python
+
+class Solution:
+    def isSymmetric(self, root: TreeNode) -> bool:
+        def dfs_left(root):
+            if not root:
+                return ()
+            return root.val, dfs_left(root.left), dfs_left(root.right)
+
+        def dfs_right(root):
+            if not root:
+                return ()
+            return root.val, dfs_right(root.right), dfs_right(root.left)
+        l = dfs_left(root)
+        r = dfs_right(root)
+        print(l, '\n', r)
+        return l == r
+#+end_src
+
+#+NAME: tuple,bfs
+#+begin_src python
+class Solution(object):
+    def isSymmetric(self, root):
+        if not root: return True
+        from collections import deque
+        q = deque([(root.left, root.right)])
+        while q:
+            l, r = q.popleft()
+            if l and r and l.val == r.val:
+                # l.right and r.left are symetric
+                q.extend([(l.right, r.left), (l.left, r.right)])
+            elif l is r:
+                continue
+            else:
+                return False
+        return True
+#+end_src
+
+#+NAME: tuple,dfs,reverse
+#+begin_src python
+def isSymmetric(self, root):
+    def tuple_tree(root):
+        return root and (root.val, tuple_tree(root.left), tuple_tree(root.right))
+
+    def reverse_tree(root):
+        if root:
+            root.right, root.left = reverse_tree(root.left), reverse_tree(root.right)
+        return root
+        
+    return tuple_tree(root) == tuple_tree(reverse_tree(root))
+#+end_src
+
+#+NAME: 
+#+begin_src python
+class Solution(object):
+    def isSymmetric(self, root):
+        def sym_tree(L,R):
+            if L and R: 
+                return L.val == R.val and sym_tree(L.left, R.right) and sym_tree(L.right, R.left)
+            else:
+                return L is R
+        return sym_tree(root, root)
+#+end_src
+
+#+NAME: dfs 简
+#+begin_src python
+def isSymmetric(self, root):
+    if not root:
+        return True
+    return self.dfs(root.left, root.right)
+    
+def dfs(self, l, r):
+    if l and r:
+        return l.val == r.val and self.dfs(l.left, r.right) and self.dfs(l.right, r.left)
+    return l == r
+#+end_src
+
+#+NAME: inorder 正确
+#+begin_src python
+"""
+        1
+      /
+    2
+  /
+1
+
+
+    2
+  /   \
+1       1
+所以要比较level
+"""
+class Solution:
+    # @param root, a tree node
+    # @return a boolean
+    def isSymmetric(self, root):
+        self.trav = []
+    	self.in_Order_Trav(root, 0)
+    	length = len(self.trav)
+
+    	for i in range(length/2):
+            if self.trav[i].val != self.trav[length-1-i].val or self.trav[i].layer != self.trav[length-1-i].layer:
+                return False
+
+        return True
+
+    
+    def in_Order_Trav(self, root, layer):
+
+        if root!=None:          
+            self.in_Order_Trav(root.left,layer+1)
+            self.trav.append(MyNode(root.val,layer))
+            self.in_Order_Trav(root.right,layer+1)  
+
+class MyNode:
+    def __init__(self, val, layer):
+        self.layer = layer
+        self.val = val
+#+end_src
+*** 104 maximum depth of binary tree *easy*
+#+NAME: short
+#+begin_src python
+class Solution:
+  def maxDepth(self, root: TreeNode,depth=0) -> int:
+      if root:
+          return max(self.maxDepth(root.left,depth+1),self.maxDepth(root.right,depth+1))
+      return depth
+#+end_src
+
+#+NAME: one line
+#+begin_src python
+class Solution:
+    def maxDepth(self, root: TreeNode,depth=0) -> int:
+        return max(self.maxDepth(root.left,depth+1),self.maxDepth(root.right,depth+1)) if root else return depth
+
+#+end_src
+
+#+NAME: one line2
+#+begin_src python
+def maxDepth(self, root):
+    return 1 + max(map(self.maxDepth, (root.left, root.right))) if root else 0
+
+#+end_src
+
+#+NAME: one line 3
+#+begin_src python
+# and replace if,or replace else
+def maxDepth(self, root):
+    return root and 1 + max(map(self.maxDepth, (root.left, root.right))) or 0
+#+end_src
+
+#+NAME: bfs
+#+begin_src python
+class Solution(object):
+    def maxDepth(self, root):
+        """
+        :type root: TreeNode
+        :rtype: int
+        """
+        depth = 0
+        level = [root] if root else []
+        while level:
+            depth += 1
+            queue = []
+            for el in level:
+                if el.left:
+                    queue.append(el.left)
+                if el.right:
+                    queue.append(el.right)
+            level = queue
+            
+        return depth
+#+end_src
+*** 559 maximum depth of N-ary tree *easy*
+#+NAME: mine
+#+begin_src python
+# Definition for a Node.
+class Node:
+    def __init__(self, val=None, children=None):
+        self.val = val
+        self.children = children
+"""
+class Solution:
+    def maxDepth(self, root: 'Node',depth=0) -> int:
+        def dfs(root,depth=1):
+            nonlocal maxDepth
+            if not root:
+                return
+            maxDepth=max(maxDepth,depth)
+            if root.children:
+                for child in root.children:
+                    dfs(child,depth+1)
+        maxDepth=0
+        dfs(root)
+        return maxDepth
+#+end_src
+*** 589 n-ary tree preOrder traversal *easy*
+#+NAME: s1
+#+begin_src python
+class Solution(object):
+    def preorder(self, root):
+        if not root:
+            return []
+        res = []
+        que = [root]
+        while len(que) != 0:
+            n = que.pop(0)
+            if n.children != None:
+                que = n.children + que
+            res.append(n.val)
+        return res
+#+end_src
+*** 590 n-ary tree postOrder traversal *easy*
+**** 样例
+遇到null,就结束当前节点的孩子增加
+否则, 就一直增加当前节点的孩子
+Input: root = [1,null,2,3,4,5,null,null,6,7,null,8,null,9,10,null,null,11,null,12,null,13,null,null,14]
+Output: [2,6,14,11,7,3,12,8,4,13,9,10,5,1]
+#+RESULTS:
+[[file:tree.png]]
+
+input=[1,null,2,3,4,5,null,null,6,7,null,8,null,9,10,null,null,11,null,12,null,13,null,null,14]
+output=[2,6,14,11,7,3,12,8,4,13,9,10,5,1]
+#+RESULTS:
+[[file:~/documents/plantuml-images/590-tree2.png]]
+**** 代码
+#+NAME: mine
+#+begin_src python
+class Solution:
+    def postorder(self, root: 'Node') -> List[int]:
+        
+        def helper(root):
+            nonlocal ans
+            if not root:
+                return
+            for child in root.children:
+                helper(child)
+            ans.append(root.val)
+        ans=[]
+        helper(root)
+        return ans
+#+end_src
+
+#+NAME: not recursive
+#+begin_src python
+class Solution:
+    def postorder(self, root: 'Node') -> List[int]:
+        if not root:
+            return []
+        ret=[]
+        stack=[root]
+        while stack:
+            n=stack.pop()
+            if n.children:
+                stack+=n.children
+            ret.insert(0,n.val)
+        return ret
+#+end_src
+*** 606 construct string from b-tree
+#+NAME: mine
+#+begin_src python
+class Solution:
+    def tree2str(self, t: TreeNode) -> str:
+        def dfs(rt):
+            if rt:
+                l = dfs(rt.left)
+                r = dfs(rt.right)
+                if not rt.right:  # right never show null
+                    r = ''
+                    if not rt.left:
+                        l = ''
+                return '({0}{1}{2})'.format(rt.val, l, r)
+            return '()'
+        return dfs(t)[1:-1]
+#+end_src
+
+#+NAME: s1
+#+begin_src python
+class Solution:
+    def tree2str(self, t: TreeNode) -> str:
+        if t:
+            if t.left is None and t.right is None:  
+                # (1,0,0), left and right decide
+                # c
+                return str(t.val)  
+            if not t.right:  
+                # (1,x,0), right decide
+                # c(l)
+                return str(t.val)+'('+self.tree2str(t.left)+')'  
+            # (1,x,1), right decide
+            # c(l)(r)
+            return str(t.val)+'('+self.tree2str(t.left)+')('+self.tree2str(t.right)+')'
+        return ''
+#+end_src
+*** 617 merge two binary trees *easy*
+#+NAME: playground
+#+begin_src python
+# Definition for a binary tree node.
+class TreeNode:
+    def __init__(self, x):
+        self.val = x
+        self.left = None
+        self.right = None
+
+class Solution:
+    def mergeTrees(self, t1, t2):
+        """
+        :type t1: TreeNode
+        :type t2: TreeNode
+        :rtype: TreeNode
+        """
+        # initial filter for inputs to make sure they're Tree Nodes with values 
+        if not t1: 
+            return t2
+        if not t2: 
+            return t1 
+
+        # initializing a tree node to store the merged tree 
+        t = TreeNode(0)
+        t.left = TreeNode(1)
+        t.right = TreeNode(1)
+        
+        # initializing a stack 
+        dfs= []
+        dfs.append(t1)
+        dfs.append(t2)
+        dfs.append(t)  
+       
+        # will merge while the stack has items to merge 
+        while dfs: 
+            
+            t_node = dfs.pop()
+            t2_node = dfs.pop()
+            t1_node = dfs.pop()
+          
+            # need to make sure the items appended are valid; otherwise 
+            if t1_node and t2_node and t_node: 
+
+                sumup = t1_node.val + t2_node.val
+                t_node.val = sumup 
+
+                if not t1_node.left: 
+                    t_node.left = t2_node.left
+                elif not t2_node.left and t1_node.left: 
+                    t_node.left = t1_node.left
+                else: 
+                    dfs.append(t1_node.left)
+                    dfs.append(t2_node.left)
+                    if not t_node.left: 
+                        t_node.left = TreeNode(0)
+                    dfs.append(t_node.left)
+                    
+                    
+                if not t1_node.right: 
+                    t_node.right = t2_node.right 
+                elif not t2_node.right and t1_node.right: 
+                    t_node.right = t1_node.right
+                else: 
+                    dfs.append(t1_node.right)
+                    dfs.append(t2_node.right)
+
+                    # not super confident about this... I feel like this isn't a good method
+                    if not t_node.right: 
+                        t_node.right = TreeNode(0)
+                    dfs.append(t_node.right)
+        
+        return t
+
+def stringToTreeNode(input):
+    input = input.strip()
+    input = input[1:-1]
+    if not input:
+        return None
+
+    inputValues = [s.strip() for s in input.split(',')]
+    root = TreeNode(int(inputValues[0]))
+    nodeQueue = [root]
+    front = 0
+    index = 1
+    while index < len(inputValues):
+        node = nodeQueue[front]
+        front = front + 1
+
+        item = inputValues[index]
+        index = index + 1
+        if item != "null":
+            leftNumber = int(item)
+            node.left = TreeNode(leftNumber)
+            nodeQueue.append(node.left)
+
+        if index >= len(inputValues):
+            break
+
+        item = inputValues[index]
+        index = index + 1
+        if item != "null":
+            rightNumber = int(item)
+            node.right = TreeNode(rightNumber)
+            nodeQueue.append(node.right)
+    return root
+
+def treeNodeToString(root):
+    if not root:
+        return "[]"
+    output = ""
+    queue = [root]
+    current = 0
+    while current != len(queue):
+        node = queue[current]
+        current = current + 1
+
+        if not node:
+            output += "null, "
+            continue
+
+        output += str(node.val) + ", "
+        queue.append(node.left)
+        queue.append(node.right)
+    return "[" + output[:-2] + "]"
+
+def main():
+    import sys
+    import io
+    def readlines():
+        for line in io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8'):
+            yield line.strip('\n')
+
+    lines = readlines()
+    while True:
+        try:
+            line = next(lines)
+            t1 = stringToTreeNode(line);
+            line = next(lines)
+            t2 = stringToTreeNode(line);
+            
+            ret = Solution().mergeTrees(t1, t2)
+
+            out = treeNodeToString(ret);
+            print(out)
+        except StopIteration:
+            break
+
+if __name__ == '__main__':
+    main()
+#+end_src
+#+NAME: mine
+#+begin_src python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, x):
+#         self.val = x
+#         self.left = None
+#         self.right = None
+
+class Solution:
+    def mergeTrees(self, t1: TreeNode, t2: TreeNode) -> TreeNode:
+            if t1 and not t2:
+                return t1 # cos t2 is None, so node.child = t2
+            elif not t1 and t2:
+                return t2
+            elif not t1 and not t2:
+                return
+                
+            node=TreeNode(t1.val+t2.val)
+            node.left=self.mergeTrees(t1.left,t2.left)
+            node.right=self.mergeTrees(t1.right,t2.right)
+            return node
+#+end_src 
+*** 637 average of levels in b-tree *easy*
+#+NAME: mine,dfs,level(dict),recursive
+#+begin_src python
+class Solution:
+    def averageOfLevels(self, root: TreeNode) -> List[float]:
+        def dfs(root,depth=0):
+            if root:
+                self.level[depth].append(root.val)
+                dfs(root.left,depth+1)
+                dfs(root.right,depth+1)
+        import collections
+        self.level=collections.defaultdict(list)
+        ans=[]
+        dfs(root)
+        for i in self.level.values():
+            ans.append(sum(i)/len(i))
+        return ans
+#+end_src
+
+#+NAME: mine,bfs,while iterative
+#+begin_src python
+class Solution:
+    def averageOfLevels(self, root: TreeNode) -> List[float]:
+        
+        q=[(root,0)]
+        import collections
+        level_dct=collections.defaultdict(list)
+        while q:
+            node,level=q.pop(0)
+            if node.left:
+                q.append((node.left,level+1))
+            if node.right:
+                q.append((node.right,level+1))
+            level_dct[level+1].append(node.val)
+        
+        ret=[]
+        for l in level_dct.values():
+            ret.append(sum(l)/len(l))
+        return ret
+#+end_src
+
+#+NAME: mine,bfs,recursive
+#+begin_src python
+class Solution(object):
+    def averageOfLevels(self, root):
+        ans = []
+        lvl = [root]
+        while lvl:
+            ans.append(sum(n.val for n in lvl) / float(len(lvl)))
+            lvl = [c for n in lvl for c in [n.left, n.right] if c]
+        return ans
+#+end_src
+*** 872 Leaf-Similar Trees *easy*
+#+NAME: mine
+#+begin_src python
+class Solution:
+    def leafSimilar(self, root1: TreeNode, root2: TreeNode) -> bool:
+        import copy
+
+        def dfs(root, l):
+            if not root:
+                return l
+            if not root.left and not root.right:
+                l.append(root.val)
+            l = dfs(root.left, l)
+            l = dfs(root.right, l)
+            return l
+        l1 = []
+        l2 = []
+        l1 = dfs(root1, l1)
+        l2 = dfs(root2, l2)
+        return l1 == l2
+#+end_src
+
+#+NAME:simple,recursive,skillful
+#+begin_src python
+
+class Solution:
+	def leafSimilar(self, root1: TreeNode, root2: TreeNode) -> bool:
+		def find_leaves(root):      # inorder traversal with condition before adding to res
+			res = []
+			if root:        # as long as it's not the end of the tree
+				res = find_leaves(root.left)        # go always left
+				if not root.left and not root.right:        # condition for leaves
+					res.append(root.val)        # add to res if it's leave
+				res = res + find_leaves(root.right)     # add to results leaves from right branches
+			return res      # return results list when it's end
+
+		return find_leaves(root1) == find_leaves(root2)
+#+end_src
+*** 965 univalued binary tree *easy*
+#+NAME: mine
+#+begin_src python
+# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, x):
+#         self.val = x
+#         self.left = None
+#         self.right = None
+
+class Solution:
+    def isUnivalTree(self, root: TreeNode) -> bool:
+        if not root:
+            return True
+        from collections import defaultdict
+        from collections import deque
+        seen=defaultdict(bool)
+        seen[root.val]=True
+        stack=deque([root])
+        while stack:
+            n=stack.pop()
+            if not seen[n.val]:
+                return False
+            if n.right:
+                stack.append(n.right)
+            if n.left:
+                stack.append(n.left)
+                
+        return True
+#+end_src
+*** 993 cousins in b-tree *easy*
+#+NAME: parent_lev:dict
+#+begin_src python
+class Solution:
+    import collections
+    parent_lev = collections.defaultdict()
+    def isCousins(self, root: TreeNode, x: int, y: int) -> bool:
+        def dfs(cur, last=-1, depth=0):
+            if cur:
+                self.parent_lev[cur.val] = (last, depth)
+                dfs(cur.left, cur.val, depth+1)
+                dfs(cur.right, cur.val, depth+1)
+
+        dfs(root)
+        x_parent, x_lev = self.parent_lev[x]
+        y_parent, y_lev = self.parent_lev[y]
+        if x_parent != y_parent and x_lev == y_lev:
+            return True
+        return False
+#+end_src
+
+**** TODO #+NAME: recursive
+#+begin_src python
+"""
+class Solution:
+      ans=[]
+      def DFS
+      不行! 一定要自己写一个def __init__定义self.ans=[]才行
+
+"""
+class Solution:
+    def isCousins(self, root, x, y):
+        self.ans=[]
+        def DFS(node, x, k, parent):
+            if not node:
+                return
+
+            if node.val == x:
+                self.ans.append(k)
+                self.ans.append(parent.val)
+
+            DFS(node.left, x, k+1, node)
+            DFS(node.right, x, k+1, node)
+
+        DFS(root, x, 0, root)
+        DFS(root, y, 0, root)
+
+        return self.ans[0] == self.ans[2] and self.ans[1] != self.ans[3]
+
+#+end_src
+#+begin_src python
+"""
+x_lev,x_parent=ans[0:2]
+"""
+class Solution(object):
+	def isCousins(self, root, x, y):
+		"""
+		:type root: TreeNode
+		:type x: int
+		:type y: int
+		:rtype: bool
+		"""
+		self.ans = []       # by making ans Solution class atributes, you've got access without passing it to the function
+		def DFS(node,x,k,parent):
+			"""
+			http://mishadoff.com/blog/dfs-on-binary-tree-array/ - read why it's so crucial
+			"""
+			if node.val==x:     # when the node is find - remember x might be x or y
+				self.ans.append(k)      # append level to the list
+				self.ans.append(parent.val)     # along with the parent value 
+			# else traverse the tree in a breadth first fashion
+			else:
+				if node.left:
+					DFS(node.left,x,k+1,node)
+				if node.right:
+					DFS(node.right,x,k+1,node)
+
+		# find the value for x and y
+		DFS(root,x,0,root)
+		DFS(root,y,0,root)
+
+		# you can check the ans table to make it more clear
+		#print(self.ans)
+
+		# return whether x and y has the same k level and different parent
+		return self.ans[0]==self.ans[2] and self.ans[1]!=self.ans[3]
+#+end_src
+*** 1022 sum of root to leaf binary numbers *easy*
+#+NAME: mine,self.str
+#+begin_src python
+class Solution:
+    def sumRootToLeaf(self, root: TreeNode) -> int:
+        def dfs(root):
+            if root:
+                    # once leaves,append(path)
+                self.strr += str(root.val)
+                if not root.left and not root.right:
+                    self.paths.append(self.strr)
+                dfs(root.left)
+                dfs(root.right)
+                self.strr = self.strr[:-1]
+
+        import collections
+        self.strr = ''
+
+        self.paths = collections.deque()
+
+        dfs(root)
+        summ = 0
+        for path in self.paths:
+            summ += int(path, 2)
+        return summ
+#+end_src
+
+#+NAME: O(logn) time,O(n) space
+#+begin_src python
+def dfs(node, path=None):
+    if path == None:
+        path = ''
+    if node:
+        path += str(node.val)
+        if node.left or node.right:
+            return dfs(node.left, path) + dfs(node.right, path)
+        else:
+            return int(path, 2)
+    else:
+        return 0
+#+end_src
+
+#+NAME: time:o(logn),space:O(1)
+#+begin_src python
+# very similar to the implementation of method 1
+# but this time, we directly pass the parent sum instead of 
+# only calculate the decimal presentation in the leaf
+# O(logn) for time
+# and without taking the recursion space into account
+# we will have O(1) for additional space
+def dfs2(node, parent_sum=None):
+    if parent_sum == None:
+        parent_sum = 0
+    if node:
+        parent_sum = parent_sum * 2 + node.val
+        if node.left or node.right:
+            return dfs2(node.left, parent_sum) + dfs2(node.right, parent_sum)
+        else:
+            return parent_sum
+    else:
+        return 0
+#+end_src
+** refactor
+*** 226 invert b-tree *easy*
+#+NAME: mine
+#+begin_src python
+# 注意,写成元祖形式,是为了已经进行的计算影响到后面
+# 比如root.left=root.right,则root.right=root.left不能产生预期结果
+class Solution:
+    def invertTree(self, root: TreeNode) -> TreeNode:
+        if root:
+            root.left,root.right=self.invertTree(root.right),self.invertTree(root.left)
+            return root
+    
+    def invertTree2(self,root):
+        if root:
+            root.left,root.right=root.right,root.left
+            self.invertTree2(root.left)
+            self.invertTree2(root.right)
+            return root
+#+end_src
+
+#+NAME: bfs
+#+begin_src python
+class Solution(object):
+    def invertTree(self, root):
+        """
+        :type root: TreeNode
+        :rtype: TreeNode
+        """
+        level = [root] if root else []
+        while level:
+            q = []
+            for node in level:
+                if node.left:
+                    q.append(node.left)                
+                if node.right:
+                    q.append(node.right)
+                node.left, node.right = node.right, node.left
+                
+            level = q
+
+        return root
+#+end_src
+dsfsdf sd
