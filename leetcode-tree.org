@@ -1,7 +1,8 @@
-* tree
-[[bst
-]][[traversal]]
-[[refactor]]
+[[bst]]
+
+[[traversal]]
+
+
 :PROPERTIES:
 :ID:       C05166BA-35A3-4BC0-9E11-FD13E0F12327
 :END:
@@ -1640,6 +1641,9 @@ def dfs2(node, parent_sum=None):
         return 0
 #+end_src
 ** refactor
+   :PROPERTIES:
+   :ID:       CFBB9351-0715-4FBA-9C22-B023F297FC82
+   :END:
 *** 226 invert b-tree *easy*
 #+NAME: mine
 #+begin_src python
