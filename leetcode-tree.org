@@ -1,4 +1,7 @@
 * tree
+[[bst
+]][[traversal]]
+[[refactor]]
 :PROPERTIES:
 :ID:       C05166BA-35A3-4BC0-9E11-FD13E0F12327
 :END:
