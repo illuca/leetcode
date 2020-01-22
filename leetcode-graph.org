@@ -1,0 +1,850 @@
+* graph
+
+** 684 Redundant Connection
+*** mine
+disjoint union
+#+begin_src python
+
+from pysnooper import snoop
+from typing import List
+class Solution:
+    def findRedundantConnection(self, edges: List[List[int]]) -> List[int]:
+        from collections import defaultdict
+        def findRoot(x):
+            xRoot=x
+            while parent[xRoot]:
+                xRoot=parent[xRoot]
+            return xRoot
+        def union(a,b):
+            nonlocal ans
+            aRoot=findRoot(a)
+            bRoot=findRoot(b)
+            if aRoot==bRoot:
+                ans=a,b
+                return False
+            else:
+                if rank[aRoot]>rank[bRoot]:
+                    parent[bRoot]=aRoot
+                elif rank[aRoot] < rank[bRoot]:
+                    parent[aRoot]=bRoot
+                else:
+                    parent[aRoot]=bRoot
+                    rank[bRoot]+=1
+                return True
+        rank=defaultdict(int)
+        ans=(0,0)
+        parent=defaultdict(bool)
+        for edge in edges:
+            if union(edge[0],edge[1]):
+                pass
+            else:
+                return ans
+
+# edges=[[1,2], [1,3], [2,3]] #[2,3]
+edges=[[1,2], [2,3], [3,4], [1,4], [1,5]] #Output: [1,4]
+s=Solution()
+print(s.findRedundantConnection(edges))
+#+end_src
+** 841. Keys ands 
+*** Mine
+#+begin_src python
+from typing import List
+from pysnooper import snoop
+
+class Solution:
+    @snoop()
+    def canVisitAllRooms(self, rooms: List[List[int]]) -> bool:
+        def dfs(i):
+            nonlocal visited,openn,rooms,num
+            visited[i]=True
+            for key in rooms[i]:
+                if not openn[key]:
+                    openn[key]=True
+                    num+=1
+                if not visited[key]:
+                    dfs(key)
+        length=len(rooms)
+        openn=[False]*length
+        openn[0]=True
+        num=1
+        visited=[False]*length
+
+        for r in range( length):
+            if openn[r]:
+                for key in rooms[r]:
+                    if not openn[key]:
+                        openn[key]=True
+                        num+=1
+                    if not visited[key]:
+                        dfs(key)
+            if num==length:
+                return True
+        return False if rooms!=[[]] else True
+
+s=Solution()
+# rooms=[[1],[2],[3],[]]   # T
+# rooms=[[1,3],[3,0,1],[2],[0]] # F
+# rooms=[[]]    # T
+# rooms=[[1],[1,1]] # T
+
+rooms=[[1,3],[3,0,1],[2],[0]] # F
+s.canVisitAllRooms(rooms)
+#+end_src
+*** S1
+事实证明, 哈希表天下无敌, 这个程序打不过我自己写的
+#+begin_src python
+class Solution
+    def canVisitAllRooms(self, rooms: List[List[int]]) -> bool:
+        visited, stack = set(), [0]
+        while stack:
+            i = stack.pop()
+            visited.add(i)
+            stack.extend([j for j in rooms[i] if j not in visited])
+        return len(visited) == len(rooms)
+#+end_src
+*** s2
+#+begin_src python
+def canVisitAllRooms(self, rooms):
+    """
+    :type rooms: List[List[int]]
+    :rtype: bool
+    """
+    # Recursive implementation
+    room_lock = [*range(1, len(rooms))]
+
+    def dfs(room=0):
+        for next_key in rooms[room]:
+            if next_key in room_lock:
+                room_lock.remove(next_key)
+                dfs(next_key)
+
+    dfs()
+return len(room_lock) == 0
+#+end_src
+*** s3
+#+begin_src python
+def canVisitAllRooms(self, rooms):
+    """
+    :type rooms: List[List[int]]
+    :rtype: bool
+    """
+    keys = [0]
+    room_locked = set()
+    """ 和我写的 if not openn[key]:
+      openn[key]=True
+      """
+    fetch_keys = lambda n: ([keys.append(key) for key in rooms[n] if key not in keys]) 
+    i = 0
+    while i < len(keys):
+        room_locked.add(keys[i])
+        fetch_keys(keys[i])
+        i += 1
+    return ln(room_locked) == len(rooms)
+#+end_src
+
+** 959. Regions Cut By Slashes
+*** 我的
+思路:
+用坐标系表示\和/
+#+begin_src python
+  from typing import List
+  import pysnooper
+  @pysnooper.snoop()
+  class Solution:
+      def regionsBySlashes(self, grid: List[str]) -> int:
+          def findRoot(p):
+              nonlocal parent
+              pRoot = p
+              while parent[pRoot] != -1:
+                  pRoot = parent[pRoot]
+              return pRoot
+
+          def union(p1, p2):
+              nonlocal parent
+              nonlocal ans  # 这里是nonlocal还是global? 貌似都可以
+              p1Root = findRoot(p1)
+              p2Root = findRoot(p2)
+              if p1Root == p2Root:
+                  ans += 1
+              else:
+                  if rank[p1Root] > rank[p2Root]:
+                      parent[p2Root]=p1Root
+                  elif  rank[p1Root] < rank[p2Root]:
+
+                      parent[p1Root] = p2Root
+                  else:
+                      parent[p1Root]=p2Root
+                      rank[p2Root]+=1
+          import collections
+          ans = 0
+          parent = collections.defaultdict(lambda: -1)
+          rank=collections.defaultdict(int)
+          length = len(grid)
+
+          for j in range(length):
+              union((j, 0), (j + 1, 0))
+              union((j, length), (j + 1, length))
+              union((0, j), (0, j + 1))
+              union((length, j), (length, j + 1))
+
+          for y in range(length):
+              for x in range(length):
+                  if grid[y][x] == '\\':
+                      p1 = x, y
+                      p2 = x + 1, y + 1
+                  elif grid[y][x] == '/':
+                      p1 = x, y + 1
+                      p2 = x + 1, y
+                  else:  # spc
+                      continue
+                  union(p1, p2)
+          return ans
+
+
+  # grid = [
+  #     "\\/\\ ",
+  #     " /\\/",
+  #     " \\/ ",
+  #     "/ / "
+  # ]
+  # ans=3
+
+  # grid=[
+  #   "//",
+  #   "/ "
+  # ]
+  # Output: 3
+  grid=[
+    " /",
+    "/ "
+  ]
+  # Output: 2
+  # grid=[
+  #   " /",
+  #   "  "
+  # ]
+  # Output: 1
+  # grid=[
+  #   "\\/",
+  #   "/\\"
+  # ]
+  # Output: 4
+
+  # grid=[
+  #   "/\\",
+  #   "\\/"
+  # ]
+  # ans = 5
+  s = Solution()
+  print(s.regionsBySlashes(grid))
+#+end_src
+*** solution1
+和我截然相反的思路
+我的思路是出现在同一个集合, 就有一个环
+而这种解法是, 找根
+
+而且这种方法不断刷新父节点, 而不仅仅是查找
+
+#+begin_src python
+from pysnooper import snoop
+class UF:
+    def __init__(self, N):
+        self.parent = list(range(N))
+
+    def find(self, x):
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]   # 我认为改成x也行
+
+    def union(self, x, y):
+        px, py = self.find(x), self.find(y)
+        self.parent[px] = py
+
+
+# We can think of each square as being partitioned into 4 smaller triangles.
+# Depending on the value of the character in square, we will merge two
+# triangles in that square. (See diagram by datou12138 in comments for better understanding of square division into triangles)
+
+# We also need to connect each square to the squares in next row or column
+# as long as they are in bounds.
+class Solution:
+    @snoop()
+    def regionsBySlashes(self, grid) -> int:
+        if not grid:
+            return 0
+        N = len(grid)
+        uf = UF(4 * N * N)
+        for r in range(N):
+            for c, val in enumerate(grid[r]):
+                # This flattens out the matrix and hence easier to map to union find
+                region = 4 * (r * N + c)  # initialize line by line, region = start of a block, 0 ,4, ... then 8, 12
+                # Representing the triangles as north, east, south, west
+                north, east, south, west = region, region + 1, region + 2, region + 3
+                # Connect triangles within the square
+                if val in '\ ':
+                    uf.union(north, east)
+                    uf.union(west, south)
+                if val in '/ ':
+                    uf.union(north, west)
+                    uf.union(south, east)
+
+                # Connect triangles with bordering triangles inside squares present
+                # in neighboring rows and columns
+                if r + 1 < N:
+                    bottom_square_region = region + 4 * N
+                    next_north = bottom_square_region  # current region 's next region, namely next_north
+                    uf.union(south, next_north)
+
+                if r - 1 >= 0:
+                    top_square_region = region - 4 * N
+                    next_south = top_square_region + 2
+                    uf.union(north, next_south)
+
+                if c + 1 < N:
+                    right_square_region = region + 4
+                    next_west = right_square_region + 3
+                    uf.union(east, next_west)
+
+                if c - 1 >= 0:
+                    left_square_region = region - 4
+                    next_east = left_square_region + 1
+                    uf.union(west, next_east)
+        # 计算有几个根, 即有几个集合, 即有几个环
+        return sum(uf.find(triangle) == triangle for triangle in range(4 * N * N)) # 4*N*N, the number of all triangles
+
+
+# grid = [
+  #     "\\/\\ ",
+  #     " /\\/",
+  #     " \\/ ",
+  #     "/ / "
+  # ]
+  # ans=3
+
+  # grid=[
+  #   "//",
+  #   "/ "
+  # ]
+  # Output: 3
+grid=[
+" /",
+"/ "
+]
+  # Output: 2
+  # grid=[
+  #   " /",
+  #   "  "
+  # ]
+  # Output: 1
+  # grid=[
+  #   "\\/",
+  #   "/\\"
+  # ]
+  # Output: 4
+
+  # grid=[
+  #   "/\\",
+  #   "\\/"
+  # ]
+  # ans = 5
+s = Solution()
+print(s.regionsBySlashes(grid))
+
+#+end_src
+ ** 参考 2
+#+begin_src python
+#+end_src
+** 1042
+*** 贪心  
+ flowers.remove(1)不可能执行两次, 我在决定用 remove 的时候就应该想到  
+
+ #+BEGIN_SRC python
+ class Solution:
+     def gardenNoAdj(self, N: int, paths: 'List[List[int]]') -> 'List[int]':
+         plant=[-1]*(N+1) # vector<int>
+         visited=[False]*(N+1) # vector<int>
+         from collections import defaultdict
+         garden=defaultdict(list)
+         for a,b in paths:
+             garden[a].append(b)
+             garden[b].append(a)
+         for g,neighbors in garden.items():
+             flowers=list(range(1,5))
+             for neighbor in neighbors:
+                 if plant[neighbor] != -1 and plant[neighbor] in flower:
+                     # 有可能两个邻居都是1, flowers.remove(1)不可能执行两次,
+                     try:
+                         flowers.remove(plant[neighbor])
+                     except:
+                         pass
+             plant[g]=flowers[0]
+         return [i if i != -1 else 1 for i in plant[1:] ] 
+ # N,paths =4, [[1, 2], [3, 4]] # -> [1,2,1,2]
+ # N,paths=4,[[1,2],[2,3],[3,4],[4,1],[1,3],[2,4]] # -> [1,2,3,4]
+ # N,paths=4,[[1,2],[3,4],[3,2],[4,2],[1,4]]
+ # N,paths=3,[[1,2],[2,3],[3,1]] # -> [1,2,3]
+ # N,paths=1,[]
+ # N,paths=6,[[4,2],[6,2],[6,3],[2,3],[5,3],[6,5],[5,4],[4,1]]
+ # N,paths=10000,[[1,2]]
+ s=Solution()
+ print(s.gardenNoAdj(N, paths))
+ print()
+ #+END_SRC
+
+*** 六行
+ 思路:
+ 1. flowers 是所有的花,一开始假定每个花园都种上所有花
+ 2. 聚焦花园 A
+ 3. 与花园 A 连接的花园为 B,C, 则删除 B,C 中与 A 重复的花
+
+ 4. 聚焦 B,C,D....重复 123
+ #+BEGIN_SRC python
+ import pysnooper
+ from typing import List
+ @pysnooper.snoop()
+ class Solution:
+     def gardenNoAdj(self, n: int, paths: List[List[int]]) -> List[int]:
+         flowers, garden, ans = [set([1, 2, 3, 4]) for i in range(n)], [[] for i in range(n)], []
+         for a,b in paths:
+             garden[a-1].append(b)
+             garden[b-1].append(a)
+         for i in range(n):
+             ans.append(flowers[i].pop())
+             for j in garden[i]:
+                 flowers[j - 1].discard(ans[i])
+         return ans
+
+ #+END_SRC
+
+
+
+** 1043 partition array for maximum sum
+[[file:leetcode.org_imgs/20200102_095358_AA7npn.png]]
++ [ ] 考虑什么时候移位
+  如何分配资源
++ [ ] 前面最大会不会导致后面不够大
++ [ ] 如何分割才能用完groupN?
+  因为有可能出现因为贪心, 移位, 而导致有很多片段
+  + [ ] 从最小的那个贪心, 还是说从最大的
+思路:
+dp[i]: 子数组A[:i]按照题意分割后的最大和
+*** j: 最后一个分割区间的长度, 1<=j<K
+
+i>=j: dp[i]=max(dp[i],dp[i-j]+maxtemp*j)
+长度为1,2,3, 各来一次, 看看最后一个区间取哪种能使结果最大
+这样从i=0开始, 把每次循环都当成是最后区间, 取得最大
+这样只要最终区间取到最大, 整体就会最大
+*** 解法一:
+#+begin_src cpp
+class Solution {
+  public:
+    int maxSumAfterPartitioning(vector<int> &A, int K) {
+        vector<int> dp(A.size() + 1, 0);
+        for (int i = 1; i <= A.size(); i++) {
+            int maxtemp = A[i - 1];
+            for (int j = 1; j <= K; j++) {
+                if (i >= j) {
+                    maxtemp   = max(A[i - j], maxtemp);
+                    int left  = dp[i - j] + maxtemp * j;
+                    int right = dp[i];
+                    dp[i]     = max(left, right);
+                } else {
+                    break;
+                }
+            }
+        }
+        return dp[A.size()];
+    }
+};
+#+end_src
+*** Solution2: 
+其中的back非常形象
+#+begin_src python
+from typing import List
+from pysnooper import snoop
+
+
+class Solution:
+    def maxSumAfterPartitioning(self, A: List[int], K: int) -> int:
+        
+        # initialization
+        dp_sum = [0 for x in range(len(A))]
+        dp_sum[0] = A[0]
+        max_so_far = A[0]
+        for x in range(1,K):
+            max_so_far = max(max_so_far, A[x])
+            dp_sum[x] = (x+1)*max_so_far
+
+        
+        # find the maximum sum so far as if this is the end of a partition
+        for ind in range(K, len(dp_sum)):
+            
+            # go back K-1 steps to find the maximum so far
+            
+            partition_max = 0
+            for back in range(K):
+                partition_max = max(partition_max, A[ind - back])
+                prev_sum = dp_sum[ind - back - 1]
+                
+                dp_sum[ind] = max(dp_sum[ind], prev_sum + (back+1)*partition_max)
+        
+        
+        return dp_sum[-1]
+
+
+A = [1, 15, 7, 9, 2, 5, 10]
+K = 3
+s = Solution()
+print(s.maxSumAfterPartitioning(A, K))
+
+#+end_src
+*** 我的
+#+begin_src python
+class Solution:
+    def maxSumAfterPartitioning(self, A, K):
+        length=len(A)
+        dp=[0]*(length+1)
+        for i in range(1,length+1):
+            maxm=0
+            for j in range(1,K+1):
+                if i >= j:
+                    maxm=max(maxm,A[i-j])
+                    dp[i]=max(dp[i],dp[i-j]+maxm*(j))
+                else:
+                    break
+        return dp[-1]
+#+end_src
+
+
+**** 改进 
+先对前面的进行初始化, 避免讨论i>=j
+#+begin_src python
+class Solution:
+    def maxSumAfterPartitioning(self, A, K):
+        length=len(A)
+        dp=[0]*(length+1)
+        maxm=A[0]
+        for i in range(1,K+1):
+            maxm = max(maxm, A[i-1])
+            dp[i] = maxm * i
+
+
+        for i in range(K+1,length+1):
+            maxm=A[i-1]
+            for j in range(1,K+1):
+                maxm = max(maxm, A[i - j])
+                dp[i] = max(dp[i], dp[i - j] + maxm * j)
+        return dp[-1] 
+#+end_src
+** 1161
+Given the root of a binary tree, the level of its root is 1, the level of its children is 2, and so on.
+
+Return the smallest level X such that the sum of all the values of nodes at level X is maximal.
+
+Example 1:
+
+[[./1061.png]]
+ 
+Input: [1,7,0,7,-8,null,null]
+
+#+begin_quote
+Output: 2
+Explanation: 
+Level 1 sum = 1.
+Level 2 sum = 7 + 0 = 7.
+Level 3 sum = 7 + -8 = -1.
+So we return the level with the maximum sum which is level 2.
+#+end_quote
+ 
+
+Note:
+
+The number of nodes in the given tree is between 1 and 10^4.
+-10^5 <= node.val <= 10^5
+*** 我的            
+#+begin_src python
+# Definition for a binary tree node.
+class TreeNode:
+    def __init__(self, x=None,left=None,right=None):
+        self.val = x
+        self.left = left
+        self.right = right
+from typing import List
+
+
+class Solution:
+    def maxLevelSum(self, root: TreeNode) -> int:
+        if root == None: return 0
+        if root.left == None and root.right == None: return 1
+
+        level = []
+        queue = [(root, 1)]
+
+        while queue != []:
+            (node, l) = queue.pop(0)
+            level.append((node.val, l)) # n th val, level
+
+            if node.left != None:
+                queue.append((node.left, l + 1))
+            if node.right != None:
+                queue.append((node.right, l + 1))
+        d=dict()
+        for val, lev in level:
+            if lev in d:
+                d[lev] += val
+            else:
+                d[lev]=val
+
+        m = l = float('-inf')
+        for k in d.keys():
+            if d[k] > m:
+                m = d[k]
+                l = k
+
+        return l
+nodes=[1,7,0,7,-8,None,None]
+
+root=TreeNode(1,TreeNode(7,TreeNode(7),TreeNode(-8)),TreeNode(0))
+s=Solution()
+print(s.maxLevelSum(root))
+print()
+#+end_src
+*** 参考 1
+Q:其中 l 没有 l+=1 出现, 那么是如何实现 l 的增加的呢?
+A: 利用(node,l)=queue.pop(0), 层数在原来节点的基础上, queue.append((node.left,l+1))
+#+begin_src python
+class Solution:
+    def maxLevelSum(self, root: TreeNode) -> int:
+        if root == None: return 0
+        if root.left == None and root.right == None: return 1
+
+        level = []
+        queue = [(root, 1)]
+
+        while queue != []:
+            (node, l) = queue.pop(0)
+            level.append((node.val, l)) # n th val, level
+
+            if node.left != None:
+                queue.append((node.left, l + 1))
+            if node.right != None:
+                queue.append((node.right, l + 1))
+        d=dict()
+        for val, lev in level:
+            if lev in d:
+                d[lev] += val
+            else:
+                d[lev]=val
+
+        m = l = float('-inf')
+        for k in d.keys():
+            if d[k] > m:
+                m = d[k]
+                l = k
+
+        return l
+#+end_src
+*** 参考 2
+#+begin_src  python
+class Solution:
+    def maxLevelSum(self, root: TreeNode) -> int:
+        levels, l, q = [], 1, [root]
+        while q:
+            levels.append([sum(node.val for node in q), l]) # level: [(summ,level)]
+            l += 1
+            q = [child for node in q for child in (node.left, node.right) if child] # 每次装一层的节点
+        return sorted(levels, key = lambda x: (x[0], -x[1]))[-1][1]
+#+end_
+** 1267 Count Servers that Communicate    
+*** mine
+#+begin_src python
+def countServers(self, grid: List[List[int]]) -> int:
+
+    rowN = len(grid)
+    colN = len(grid[0])
+    ans = 0
+    sumCol = lambda j: sum([grid[x][j] for x in range(rowN)])
+    sumRow = lambda i: sum([grid[i][x] for x in range(colN)])
+    for i in range(rowN):
+        for j in range(colN):
+            if grid[i][j] == 1 and (sumCol(j) > 1 or sumRow(i) > 1):
+                ans += 1
+    return ans
+#+end_src
+*参考*
+#+begin_src python
+class Solution:
+    
+    def countServers(self, grid: List[List[int]]) -> int:
+        
+        import numpy as np
+        npgrid = np.array([np.array(xi) for xi in grid])
+        
+        connected = set()
+        
+        for i in range(npgrid.shape[0]):
+            
+            for j in range(npgrid.shape[1]):
+                
+                if npgrid[i,j]==1 and (sum(npgrid[:,j]) > 1 or sum(npgrid[i,:]) > 1):
+                    connected.add((i, j))
+        #print(connected)
+        return len(connected)
+#+end_src
+*** s2
+#+begin_src python
+class Solution:
+    
+    def countServers(self, grid: List[List[int]]) -> int:
+
+        from collections import defaultdict
+        rowN = len(grid)
+        colN = len(grid[0])
+        rows=defaultdict(int)
+        cols=defaultdict(int)
+        for i in range(rowN):
+            for j in range(colN):
+                if grid[i][j]==1:
+                    rows[i]+=1
+                    cols[j]+=1
+        ans=0
+        for i in range(rowN):
+            for j in range(colN):
+                if grid[i][j] == 1 and (rows[i] > 1or cols[j]>1):
+                    ans+=1
+        return ans
+#+end_src
+*参考*
+#+begin_src cpp
+#include <iostream>
+#include <map>
+#include <unordered_map>
+#include <vector>
+using namespace std;
+
+class Solution {
+  public:
+    int countServers(vector<vector<int>> &grid) {
+        unordered_map<int, int> rows, cols;
+        int                     res = 0;
+        for (int i = 0; i < grid.size(); ++i) {
+            for (int j = 0; j < grid[0].size(); ++j) {
+                if (grid[i][j] == 0)
+                    continue;
+                if (!rows.count(i))
+                    rows[i] = 0;
+                if (!cols.count(j))
+                    cols[j] = 0;
+                ++rows[i];
+                ++cols[j];
+            }
+        }
+        for (int i = 0; i < grid.size(); ++i) {
+            for (int j = 0; j < grid[0].size(); ++j) {
+                if (grid[i][j] == 0)
+                    continue;
+                if (rows[i] > 1 || cols[j] > 1)
+                    ++res;
+            }
+        }
+        return res;
+    }
+};
+
+int main(void) {
+    vector<vector<int>> grid = {
+        {1, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+    Solution s;
+    cout << s.countServers(grid);
+    return 0;
+}
+#+end_src
+** 1306 J ump Game III
+*** mine
+#+begin_src python
+from typing import List
+from pysnooper import snoop
+
+
+class Solution:
+    @snoop()
+    def canReach(self, arr: List[int], start: int) -> bool:
+        stack = [start]
+        seen = set()
+        length = len(arr)
+        while stack:
+
+            i = stack.pop()
+
+            seen.add(i)
+            if arr[i]==0:
+                return True
+            plus = i + arr[i]
+            minus = i - arr[i]
+            if 0 <= plus < length and plus not in seen:
+                stack.append(plus)
+            if 0<= minus < length and minus not in seen:
+                stack.append(minus)
+        return False
+
+# arr = [4, 2, 3, 0, 3, 1, 2]
+# start = 0 # T
+
+arr = [3,0,2,1,2]
+start = 2 # F
+
+s = Solution()
+s.canReach(arr, start)
+
+#+end_src
+*** s1
+- visited={start}
+  直接判定为set
+#+begin_src python
+class Solution:
+    def canReach(self, arr: List[int], start: int) -> bool:
+        if not arr[start]:
+            return True
+			
+        n = len(arr)
+        visited = {start}
+        stack = [start]
+        
+        while stack:
+            index = stack.pop()
+            
+            for index in (index + arr[index], index - arr[index]):
+                if 0 <= index < n and index not in visited:
+                    if not arr[index]:
+                        return True
+                    
+                    stack.append(index)
+                    visited.add(index)
+        
+        return False
+#+end_src
+*** s2
+- [X] 这个人很好的判断了界限, 
+  i-A[i] >=0
+  i+A[i] < L
+- [X] collections.deque的用法
+  deque is double-ended queue
+
+  - [X] Remove and return an element from the left side of the deque. If no elements are present, raises an IndexError.
+  
+- [X] set.update()
+   a = {1, 2, 3}
+   print(a.update({1, 2, 3, 4, 5, 6}))
+  
+#+begin_src python
+class Solution:
+    def canReach(self, A: List[int], S: int) -> bool:
+        L, V, C = len(A), set(), collections.deque([S])
+        while C:
+            _, i = V.update(C), C.popleft()
+            if A[i] == 0: return True
+            if i-A[i] >=0 and i-A[i] not in V: C.append(i-A[i])
+            if i+A[i] < L and i+A[i] not in V: C.append(i+A[i])
+        return False
+
+#+end_src

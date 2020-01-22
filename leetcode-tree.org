@@ -1,4 +1,7 @@
 * tree
+:PROPERTIES:
+:ID:       C05166BA-35A3-4BC0-9E11-FD13E0F12327
+:END:
 ** bst
 *** 108 convert sorted array to bst *easy*
 #+NAME: mine,recursive
@@ -36,6 +39,49 @@ class Solution:
                 return root
         return helper(0,len(nums)-1)
 #+end_src
+*** 235 lowest common ancestor of a bst
+
+此解法非常神奇, 第一个满足low<=root.val<=up的node就是所求
+#+NAME: dfs,iterative
+#+begin_src python
+def lowestCommonAncestor(self, root, p, q):
+   # runtime: 117ms
+   low, up = min(p.val, q.val), max(p.val, q.val)
+   while root:
+     if low > root.val:
+        root = root.right
+     elif up < root.val:
+        root = root.left
+     else:
+        return root
+return None
+#+end_src
+#+NAME:mine, 完全没注意到是bst...
+#+begin_src python
+class Solution:
+    def lowestCommonAncestor(self, root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
+        self.ans = None
+
+        def dfs(root, p, q):
+            if not root:
+                return 0  # not find
+            summ = 0
+            if root.val == p.val or root.val == q.val:
+                summ = 1
+
+            l_find = dfs(root.left, p, q)
+            r_find = dfs(root.right, p, q)
+
+            summ += l_find+r_find
+
+            if summ == 2 and not self.ans:
+                self.ans = root
+            return summ
+
+        dfs(root, p, q)
+        return self.ans
+#+end_src
+
 *** 530 minimum absolute difference in bst
 #+NAME: abs(cur-last), inorder
 #+begin_src python
@@ -290,7 +336,7 @@ class Solution:
             return None
         return dfs(root)
 #+end_src
-*** 700 search in a binary search tree *easy*
+*** 700 search in a bst *easy*
 给定一个值,如何此值在bst中, 就返回此值所在的节点树
 否则,返回None
 
@@ -415,7 +461,7 @@ class Solution:
 
         return sum
 #+end_src
-** traverse
+** traversal
 *** 100 same tree *easy*
 #+NAME: dfs
 #+begin_src python
@@ -685,6 +731,341 @@ class Solution(object):
             
         return depth
 #+end_src
+*** TODO 107 b-tree level order traversal II *easy*                  :imp:
+
+这里为什么tmp=[]不用copy? 不是说引用么,我在递归时就需要copy
+比如我的操作系统最后一次作业bitmap
+
+
+#+NAME: dfs,bfs,stack,queue 
+#+begin_src python
+# dfs recursively
+def levelOrderBottom1(self, root):
+    res = []
+    self.dfs(root, 0, res)
+    return res
+
+def dfs(self, root, level, res):
+    if root:
+        if len(res) < level + 1 # we will visit -(level+1) later
+            res.insert(0, [])
+        res[-(level+1)].append(root.val)
+        self.dfs(root.left, level+1, res)
+        self.dfs(root.right, level+1, res)
+        
+# dfs + stack
+def levelOrderBottom2(self, root):
+    stack = [(root, 0)]
+    res = []
+    while stack:
+        node, level = stack.pop()
+        if node:
+            if len(res) < level+1:
+                res.insert(0, [])
+            res[-(level+1)].append(node.val)
+            stack.append((node.right, level+1))
+            stack.append((node.left, level+1))
+    return res
+ 
+# bfs + queue   
+def levelOrderBottom(self, root):
+    queue, res = collections.deque([(root, 0)]), []
+    while queue:
+        node, level = queue.popleft()
+        if node:
+            if len(res) < level+1:
+                res.insert(0, [])
+            res[-(level+1)].append(node.val)
+            queue.append((node.left, level+1))
+            queue.append((node.right, level+1))
+    return res
+#+end_src
+#+NAME: mine,bst
+#+begin_src python
+
+class Solution:
+    def levelOrderBottom(self, root: TreeNode) -> List[List[int]]:
+        import collections
+        if not root:
+            return []
+        q = collections.deque([root])
+        level = collections.deque([[root.val]])
+
+        import copy
+
+        while q:
+            tmp = []
+            for i in range(len(q)):
+                cur = q.popleft()
+                if cur.left:
+                    tmp.append(cur.left.val)
+                    q.append(cur.left)
+                if cur.right:
+                    tmp.append(cur.right.val)
+                    q.append(cur.right)
+            if tmp:
+                level.appendleft(tmp)
+#+end_src
+*** 110 balanced b-tree                                              :easy:
+#+NAME: mine
+#+begin_src python
+class Solution:
+    def isBalanced(self, root: TreeNode) -> bool:
+        self.flag = True
+
+        def dfs(rt, lev=0):
+                if not rt:
+                    return lev-1
+
+                lev_l = dfs(rt.left, lev+1)
+                lev_r = dfs(rt.right, lev+1)
+                print(rt.val, lev_l, lev_r)
+                if self.flag == True: # once false shows up, flag will not change by that time
+                    self.flag = True if abs(lev_l-lev_r) <= 1 else False
+                    return max(lev_l, lev_r)
+                    
+        dfs(root)
+        return self.flag
+# 改
+class Solution:
+    def isBalanced(self, root: TreeNode) -> bool:
+        def dfs(rt, depth=0):
+            if not rt:
+                return depth-1, True
+
+            l_depth, l_balanced = dfs(rt.left, depth+1)
+            r_depth, r_balanced = dfs(rt.right, depth+1)
+            print(rt.val, l_depth, r_depth)
+
+            return max(l_depth, r_depth), l_balanced and r_balanced and abs(l_depth-r_depth) <= 1
+        return dfs(root)[1]
+
+#+end_src
+
+#+NAME: dfs, find max depth of every node
+#+begin_src python
+class Solution(object):
+    def isBalanced(self, root):
+            
+        def check(root):
+            if root is None:
+                return 0
+            left  = check(root.left)
+            right = check(root.right)
+            if left == -1 or right == -1 or abs(left - right) > 1:
+                return -1
+            return 1 + max(left, right)
+            
+        return check(root) != -1
+
+# readable
+def check(node):
+    if node == None:
+        return (0, True)
+    l_depth, l_balanced = check(node.left)
+    r_depth, r_balanced = check(node.right)
+    return max(l_depth, r_depth) + 1, l_balanced and r_balanced and abs(l_depth - r_depth) <= 1
+# 平民写法
+class Solution(object):
+    def isBalanced(self, root):
+        def check(root):
+            if not root:
+                return 0
+            
+            left = check(root.left)
+            if left == -1:
+                return -1
+            right = check(root.right)
+            if right == -1:
+                return -1
+            
+            if abs(left - right) > 1:
+                return -1
+            return max(left, right) + 1
+        
+        return check(root) != -1
+#+end_src
+
+
+#+NAME: postorder,iterative
+#+begin_src python
+class Solution(object):
+    def isBalanced(self, root):
+        stack, node, last, depths = [], root, None, {}
+        while stack or node:
+            if node:
+                stack.append(node)
+                node = node.left
+            else:
+                node = stack[-1]
+                if not node.right or last == node.right:
+                    node = stack.pop()
+                    left, right  = depths.get(node.left, 0), depths.get(node.right, 0)
+                    if abs(left - right) > 1: return False
+                    depths[node] = 1 + max(left, right)
+                    last = node
+                    node = None
+                else:
+                    node = node.right
+       2  return True
+
+#+end_src
+*** 111 minmum depth of b-tree                                       :easy:
+注意是root到最近的叶子,而不是root到地面
+#+NAME: mine
+#+begin_src python
+class Solution:
+    def minDepth(self, root: TreeNode) -> int:
+        if root is None: # []
+            return 0
+        if root.left is None and root.right is None: # leaf
+            return 1
+        l_depth=r_depth=float('inf')
+        if root.left: 
+            l_depth=self.minDepth(root.left) 
+        if root.right: 
+            r_depth=self.minDepth(root.right)
+        return min(l_depth,r_depth)+1
+#+end_src
+
+#+NAME: 利用减少max忽略地平线的影响
+#+begin_src python
+def minDepth(self, root):
+    if not root:
+        return 0
+    if not root.left or not root.right:
+    # 用max来忽略None的深度
+        return max(self.minDepth(root.left), self.minDepth(root.right)) + 1
+    else:
+        return min(self.minDepth(root.left), self.minDepth(root.right)) + 1
+#+end_src
+
+#+NAME: bfs
+#+begin_src python
+# BFS   
+def minDepth(self, root):
+    if not root:
+        return 0
+    queue = collections.deque([(root, 1)])
+    while queue:
+        node, level = queue.popleft()
+        if node:
+            if not node.left and not node.right:
+                return level # traverse level by level.once finding a exit,return
+            else:
+                queue.append((node.left, level+1))
+                queue.append((node.right, level+1))
+#+end_src
+*** TODO 112 path sum
++ [X] 注意, 此题root也可以是一个叶子!
++ [X] if not root判断的不一定是叶子!
++ [X] 不能中途截断,sum可能小于0
+#+begin_example
+Given a binary tree and a sum, determine if the tree has a root-to-leaf path such that adding up all the values along the path equals the given sum.
+
+Note: A leaf is a node with no children.
+
+Example:
+
+Given the below binary tree and sum = 22,
+
+      5
+     / \
+    4   8
+   /   / \
+  11  13  4
+ /  \      \
+7    2      1
+return true, as there exist a root-to-leaf path 5->4->11->2 which sum is 22.
+#+end_example
+
+
+#+NAME: iterative dfs
+#+begin_src python
+class Solution:
+
+    def hasPathSum(self, root: TreeNode, sum: int) -> bool:
+        import collections
+        if root is None:
+            return False
+        
+        stack = collections.deque([(root, root.val)])
+        while stack:
+            node, summ = stack.pop()
+            if summ == sum and not node.left and not node.right:
+                return True
+            if node.right:
+                stack.append((node.right, summ+node.right.val))
+            if node.left:
+                stack.append((node.left, summ+node.left.val))
+        return False
+#+end_src
+
+#+NAME: dfs, recursive
+#+begin_src python
+class Solution:
+    def hasPathSum(self, root, sum):
+        if not root:
+            return False
+
+        if not root.left and not root.right and root.val == sum:
+            return True
+
+        sum -= root.val
+
+        return self.hasPathSum(root.left, sum) or self.hasPathSum(root.right, sum)
+#+end_src
+
+#+NAME: 为何有问题?
+#+begin_src python
+
+class Solution:
+
+    def hasPathSum(self, root: TreeNode, sum: int) -> bool:
+        def helper(root, sum):
+            if not root:
+                return sum == 0
+            sum -= root.val
+
+            l_meet = helper(root.left, sum)
+            r_meet = helper(root.right, sum)
+            if sum == 0:
+                if not root.left and not root.right:  # sum==0 and is leaf
+                    return True
+                else:
+                    return l_meet and r_meet
+            return l_meet or r_meet
+
+        if not root and sum == 0:
+            return False
+        return helper(root, sum)
+#+end_src
+*** 257 b-tree paths                                                 :easy:
+#+NAME: mine,dfs,recursive
+#+begin_src python
+
+class Solution:
+    def binaryTreePaths(self, root: TreeNode) -> List[str]:
+        def dfs(root):
+            if not root:
+                return
+            self.ans[-1] += str(root.val)+'->'  # cur
+            last = self.ans[-1]  # cos after dfs(left),ans[-1] may change
+
+            if not root.left and not root.right:
+                self.ans[-1] = self.ans[-1][:-2]
+            else:
+                dfs(root.left)  # left
+                if root.left and root.right:  # two children,add path num
+                    self.ans.append(last)
+                dfs(root.right)  # right
+
+        if not root:
+            return
+        self.ans = ['']  # we can use str also
+        dfs(root)
+        return self.ans
+#+end_src
 *** 559 maximum depth of N-ary tree *easy*
 #+NAME: mine
 #+begin_src python
@@ -725,9 +1106,10 @@ class Solution(object):
         return res
 #+end_src
 *** 590 n-ary tree postOrder traversal *easy*
-**** 样例
-遇到null,就结束当前节点的孩子增加
+
+#+begin_quote
 否则, 就一直增加当前节点的孩子
+遇到null,就结束当前节点的孩子增加
 Input: root = [1,null,2,3,4,5,null,null,6,7,null,8,null,9,10,null,null,11,null,12,null,13,null,null,14]
 Output: [2,6,14,11,7,3,12,8,4,13,9,10,5,1]
 #+RESULTS:
@@ -737,7 +1119,8 @@ input=[1,null,2,3,4,5,null,null,6,7,null,8,null,9,10,null,null,11,null,12,null,1
 output=[2,6,14,11,7,3,12,8,4,13,9,10,5,1]
 #+RESULTS:
 [[file:~/documents/plantuml-images/590-tree2.png]]
-**** 代码
+#+end_quote
+
 #+NAME: mine
 #+begin_src python
 class Solution:
@@ -1100,7 +1483,8 @@ class Solution:
                 
         return True
 #+end_src
-*** 993 cousins in b-tree *easy*
+*** TODO 993 cousins in b-tree *easy*
+
 #+NAME: parent_lev:dict
 #+begin_src python
 class Solution:
@@ -1121,7 +1505,7 @@ class Solution:
         return False
 #+end_src
 
-**** TODO #+NAME: recursive
+#+NAME: recursive TODO
 #+begin_src python
 """
 class Solution:
@@ -1150,6 +1534,8 @@ class Solution:
         return self.ans[0] == self.ans[2] and self.ans[1] != self.ans[3]
 
 #+end_src
+
+
 #+begin_src python
 """
 x_lev,x_parent=ans[0:2]
@@ -1187,6 +1573,7 @@ class Solution(object):
 		# return whether x and y has the same k level and different parent
 		return self.ans[0]==self.ans[2] and self.ans[1]!=self.ans[3]
 #+end_src
+
 *** 1022 sum of root to leaf binary numbers *easy*
 #+NAME: mine,self.str
 #+begin_src python
